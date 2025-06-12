@@ -2,9 +2,11 @@ import os
 import json
 import logging
 import requests
+import urllib.parse
 from flask import Flask, request, Response
-from urllib.parse import urljoin
 import urllib3
+
+from homeassistant import HomeAssistant
 
 urllib3.disable_warnings(urllib3.exceptions.InsecureRequestWarning)
 
@@ -26,14 +28,15 @@ PROXY_PORT = 8080
 logging.basicConfig(level=LOG_LEVEL)
 
 app = Flask(__name__)
+ha = HomeAssistant()
 
-device_paths = {
-    "/6/t4/dev_device_info", "/6/t3/dev_device_info",
-    "/6/t4/dev_iot_device_info", "/6/t3/dev_iot_device_info",
-    "/6/t4/dev_signup", "/6/t3/dev_signup",
-}
+device_info_paths = {"/6/t4/dev_device_info", "/6/t3/dev_device_info"}
+iot_device_info_paths = {"/6/t4/dev_iot_device_info", "/6/t3/dev_iot_device_info"}
+signup_paths = {"/6/t4/dev_signup", "/6/t3/dev_signup"}
 heartbeat_paths = {"/6/poll/t4/heartbeat", "/6/poll/t3/heartbeat"}
 serverinfo_paths = {"/6/t4/dev_serverinfo", "/6/t3/dev_serverinfo"}
+state_report_paths = {"/6/t4/dev_state_report", "/6/t3/dev_state_report"}
+event_report_paths = {"/6/t4/dev_event_report", "/6/t3/dev_event_report"}
 
 
 def skip_logging(path):
@@ -105,11 +108,26 @@ def modify_serverinfo():
 @app.route('/<path:path>', methods=["GET", "POST", "PUT", "DELETE", "PATCH"])
 def proxy(path):
     fullpath = f'/{path}'
-    url = urljoin(TARGET_URL, fullpath)
+    url = urllib.parse.urljoin(TARGET_URL, fullpath)
     try:
         headers = {key: value for key, value in request.headers}
         headers['User-Agent'] = 'PETKIT DEV'
         headers['Host'] = PETKIT_HOST
+
+        if fullpath in signup_paths:
+            parsed = request.form.to_dict()
+            firmware = parsed['firmware']
+            ha.set_firmware(firmware)
+        elif fullpath in event_report_paths:
+            parsed = request.form.to_dict()
+            event_type = parsed['eventType']
+            content = json.loads(parsed['content'])
+            state = json.loads(parsed['state'])
+            ha.process_event(event_type, content, state)
+        elif fullpath in state_report_paths:
+            parsed = request.form.to_dict()
+            state = json.loads(parsed['state'])
+            ha.process_state(state)
 
         response = requests.request(
             method=request.method,
@@ -125,9 +143,11 @@ def proxy(path):
         content_type = response.headers.get('Content-Type', '')
         if 'application/json' in content_type:
             json_body = response.json()
-            if fullpath in serverinfo_paths:
+            if fullpath in iot_device_info_paths:
+                ha.set_device_name(json_body['result']['deviceName'])
+            elif fullpath in serverinfo_paths:
                 json_body = modify_serverinfo()
-            elif fullpath in device_paths:
+            elif fullpath in device_info_paths:
                 json_body = modify_response(json_body)
 
             response_body = json.dumps(json_body)
@@ -140,4 +160,8 @@ def proxy(path):
 
 
 if __name__ == '__main__':
-    app.run(host='0.0.0.0', port=PROXY_PORT)
+    try:
+        app.run(host='0.0.0.0', port=PROXY_PORT)
+    except KeyboardInterrupt:
+        ha.disconnect()
+        pass

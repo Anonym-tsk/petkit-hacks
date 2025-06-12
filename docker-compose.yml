@@ -18,4 +18,8 @@ services:
       LOG_LEVEL: debug # optional, default info
       CONF_AUTOWORK: 1 # optional, default 1
       CONF_UNIT: 0  # optional, default 0 (1 - lbs, 0 - kg)
+      MQTT_HOST: 192.168.1.101 # optional, mqtt server host
+      MQTT_PORT: 1883 # optional, default 1883
+      MQTT_USER: user # optional, mqtt user
+      MQTT_PASS: pass # optional, mqtt user
     restart: unless-stopped
