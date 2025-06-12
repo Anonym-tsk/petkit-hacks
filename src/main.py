@@ -1,0 +1,143 @@
+import os
+import json
+import logging
+import requests
+from flask import Flask, request, Response
+from urllib.parse import urljoin
+import urllib3
+
+urllib3.disable_warnings(urllib3.exceptions.InsecureRequestWarning)
+
+PETKIT_HOST = os.getenv("PETKIT_HOST", "api.eu-pet.com")
+SERVER_IP = os.getenv("SERVER_IP", "127.0.0.1")
+SERVER_PORT = os.getenv("SERVER_PORT", "80")
+TARGET_SN = os.getenv("TARGET_SN", None)
+LOG_LEVEL = getattr(logging, os.getenv("LOG_LEVEL", "INFO").upper(), logging.INFO)
+
+CONF_AUTOWORK = os.getenv("CONF_AUTOWORK", 1)
+CONF_UNIT = os.getenv("CONF_UNIT", 0)
+
+API_IP_URL = f"http://{SERVER_IP}:{SERVER_PORT}/6/"
+TARGET_URL = f"http://{PETKIT_HOST}"
+API_URL = f"{TARGET_URL}/6/"
+PROXY_PORT = 8080
+
+# http_client.HTTPConnection.debuglevel = 1 if LOG_LEVEL <= logging.DEBUG else 0
+logging.basicConfig(level=LOG_LEVEL)
+
+app = Flask(__name__)
+
+device_paths = {
+    "/6/t4/dev_device_info", "/6/t3/dev_device_info",
+    "/6/t4/dev_iot_device_info", "/6/t3/dev_iot_device_info",
+    "/6/t4/dev_signup", "/6/t3/dev_signup",
+}
+heartbeat_paths = {"/6/poll/t4/heartbeat", "/6/poll/t3/heartbeat"}
+serverinfo_paths = {"/6/t4/dev_serverinfo", "/6/t3/dev_serverinfo"}
+
+
+def skip_logging(path):
+    return LOG_LEVEL > logging.DEBUG and path in heartbeat_paths
+
+
+@app.before_request
+def cache_body():
+    request._request_body = request.get_data(cache=True)
+
+
+@app.before_request
+def log_request():
+    if skip_logging(request.path):
+        return
+
+    logging.info(f">>> Request: {request.method} {request.url}")
+    for k, v in request.headers.items():
+        logging.debug(f">>> Header: {k}: {v}")
+
+    data = getattr(request, '_request_body', b'')
+    if data:
+        logging.debug(f">>> Body: {data.decode('utf-8')}")
+
+
+@app.after_request
+def log_response(response):
+    if skip_logging(request.path):
+        return response
+
+    logging.info(f"<<< Response: {response.status}")
+    for k, v in response.headers.items():
+        logging.debug(f"<<< Header: {k}: {v}")
+    if response.data:
+        logging.debug(f"<<< Body: {response.data.decode('utf-8')}")
+    return response
+
+
+def modify_response(resp_json):
+    if "result" in resp_json and isinstance(resp_json["result"], dict):
+        result = resp_json["result"]
+        settings = result.get("settings", {})
+
+        if ((TARGET_SN is None or TARGET_SN == result.get("sn"))
+                and isinstance(settings, dict)):
+            if "autoWork" in settings:
+                logging.info(f'Modifying autowork from {settings["autoWork"]} to {CONF_AUTOWORK}')
+                settings["autoWork"] = CONF_AUTOWORK
+            if "unit" in settings:
+                logging.info(f'Modifying unit from {settings["unit"]} to {CONF_UNIT}')
+                settings["unit"] = CONF_UNIT
+
+    return resp_json
+
+
+def modify_serverinfo():
+    logging.info(f'Modifying ipServers and apiServers')
+    return {
+        "result": {
+            "ipServers": [API_IP_URL],
+            "apiServers": [API_URL],
+            "nextTick": 3600,
+            "linked": 0
+        }
+    }
+
+
+@app.route('/', defaults={'path': ''}, methods=["GET", "POST", "PUT", "DELETE", "PATCH"])
+@app.route('/<path:path>', methods=["GET", "POST", "PUT", "DELETE", "PATCH"])
+def proxy(path):
+    fullpath = f'/{path}'
+    url = urljoin(TARGET_URL, fullpath)
+    try:
+        headers = {key: value for key, value in request.headers}
+        headers['User-Agent'] = 'PETKIT DEV'
+        headers['Host'] = PETKIT_HOST
+
+        response = requests.request(
+            method=request.method,
+            url=url,
+            headers=headers,
+            data=getattr(request, '_request_body', b''),
+            cookies=request.cookies,
+            allow_redirects=False,
+            verify=False,
+            timeout=10
+        )
+
+        content_type = response.headers.get('Content-Type', '')
+        if 'application/json' in content_type:
+            json_body = response.json()
+            if fullpath in serverinfo_paths:
+                json_body = modify_serverinfo()
+            elif fullpath in device_paths:
+                json_body = modify_response(json_body)
+
+            response_body = json.dumps(json_body)
+            return Response(response_body, status=response.status_code, content_type='application/json')
+        else:
+            return Response(response.content, status=response.status_code, headers=dict(response.headers))
+    except Exception as e:
+        logging.error(f"Proxy error: {e}")
+        return Response(f"Proxy error: {str(e)}", status=502)
+
+
+if __name__ == '__main__':
+    app.run(host='0.0.0.0', port=PROXY_PORT)
