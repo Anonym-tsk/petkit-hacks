@@ -18,6 +18,7 @@ LOG_LEVEL = getattr(logging, os.getenv('LOG_LEVEL', 'INFO').upper(), logging.INF
 
 CONF_AUTOWORK = os.getenv('CONF_AUTOWORK', 1)
 CONF_UNIT = os.getenv('CONF_UNIT', 0)
+CONF_SAND_TYPE = os.getenv('CONF_SAND_TYPE', 1)
 
 API_IP_URL = f"http://{SERVER_IP}:{SERVER_PORT}/6/"
 TARGET_URL = f"http://{PETKIT_HOST}"
@@ -40,7 +41,7 @@ event_report_paths = {'/6/t4/dev_event_report', '/6/t3/dev_event_report'}
 
 
 def skip_logging(path):
-    return LOG_LEVEL > logging.DEBUG and path in heartbeat_paths
+    return path in heartbeat_paths
 
 
 @app.before_request
@@ -75,7 +76,7 @@ def log_response(response):
     return response
 
 
-def modify_response(resp_json):
+def modify_device_info(resp_json):
     if 'result' in resp_json and isinstance(resp_json['result'], dict):
         result = resp_json['result']
         settings = result.get('settings', {})
@@ -88,6 +89,9 @@ def modify_response(resp_json):
             if 'unit' in settings:
                 logging.info(f"Modifying unit from {settings['unit']} to {CONF_UNIT}")
                 settings['unit'] = CONF_UNIT
+            if 'sandType' in settings:
+                logging.info(f"Modifying sandType from {settings['sandType']} to {CONF_SAND_TYPE}")
+                settings['sandType'] = CONF_SAND_TYPE
 
     return resp_json
 
@@ -121,6 +125,12 @@ def proxy(path):
         elif fullpath in event_report_paths:
             parsed = request.form.to_dict()
             if 'eventType' in parsed:
+                # eventType=10 - кот посрал
+                # eventType=10&event_id=400079435_1749747433&timestamp=1749747466&content={"time_in":1749747433,"time_out":1749747466,"auto_clear":1,"is_shit":1,"interval":2,"pet_weight":2090,"shit_weight":0}&state={"litter":{"weight":9598,"usedTimes":2,"percent":0,"sandType":0},"k3Id":0,"device":{"sw":1,"pet_in_time":0,"k3LightSwitch":0},"err":{"DC":0,"mcu":0,"scale":0,"falldown":0,"moto_M":0,"moto_D":0,"hallT":0,"hallB":0,"hallH":0,"hallD":0,"hallS":0,"hallO":0,"hallC":0,"PROX":0,"rtc":0,"atmz":0,"full":0,"scaleD":0,"OLED":0},"sensor":{"weight":9602,"stdby_hall":0,"dump_hall":1,"smooth_hall":1,"open_hall":1,"close_hall":0,"top_hall":0,"box_hall":0,"prox_L":0,"prox_R":41},"boxState":1,"other":"heap:76144,runt:106471,res:6,ow:7131246,cw:7130990,zw:7764741,Ls:66,Hs:66,cur:234_501_0,DC:12408,pet:1,PX:200-40,PXS:2147483647-887,ws:0,wcnt:3,md:1197,k3c:0,IOT:3_-2319,dtp:12"}
+                # eventType=3 - запущена очистка
+                # eventType=3&event_id=400079435_1749747587&timestamp=1749747587&content={"reason":0,"pos":-30001,"action":0}&state={"litter":{"weight":9602,"usedTimes":2,"percent":0,"sandType":0},"k3Id":0,"device":{"sw":1,"pet_in_time":0,"k3LightSwitch":0},"work_state":{"work_mode":0,"work_reason":0,"work_process":13,"stop_time":600,"safe_warn":-1},"err":{"DC":0,"mcu":0,"scale":0,"falldown":0,"moto_M":0,"moto_D":0,"hallT":0,"hallB":0,"hallH":0,"hallD":0,"hallS":0,"hallO":0,"hallC":0,"PROX":0,"rtc":0,"atmz":0,"full":0,"scaleD":0,"OLED":0},"sensor":{"weight":9602,"stdby_hall":0,"dump_hall":1,"smooth_hall":1,"open_hall":0,"close_hall":1,"top_hall":0,"box_hall":0,"prox_L":0,"prox_R":41},"boxState":1,"other":"heap:83104,runt:106592,res:6,ow:7130967,cw:7130960,zw:7764741,Ls:66,Hs:66,cur:234_501_0,DC:12402,pet:1,PX:200-40,PXS:2147483647-0,ws:1,wcnt:3,md:1199,k3c:0,IOT:3_-2319,dtp:12"}
+                # eventType=5 - завершена очистка (?)
+                # eventType=5&event_id=400079435_1749747587&timestamp=1749747693&content={"start_time":1749747587,"start_reason":0,"pos":-30001,"current":219,"result":0,"components":0,"litter_weight":9602,"litter_percent":0,"box":0,"clean_weight":2,"err":null}&state={"litter":{"weight":9602,"usedTimes":2,"percent":0,"sandType":0},"k3Id":0,"device":{"sw":1,"pet_in_time":0,"k3LightSwitch":0},"err":{"DC":0,"mcu":0,"scale":0,"falldown":0,"moto_M":0,"moto_D":0,"hallT":0,"hallB":0,"hallH":0,"hallD":0,"hallS":0,"hallO":0,"hallC":0,"PROX":0,"rtc":0,"atmz":0,"full":0,"scaleD":0,"OLED":0},"sensor":{"weight":9599,"stdby_hall":0,"dump_hall":1,"smooth_hall":1,"open_hall":1,"close_hall":0,"top_hall":0,"box_hall":0,"prox_L":0,"prox_R":42},"boxState":1,"other":"heap:103296,runt:106699,res:6,ow:7130967,cw:7131159,zw:7764741,Ls:66,Hs:66,cur:383_671_0,DC:12360,pet:1,PX:200-40,PXS:2147483647-0,ws:0,wcnt:3,md:1201,k3c:0,IOT:3_-2319,dtp:12"}
                 event_type = parsed['eventType']
                 content = json.loads(parsed['content'])
                 state = json.loads(parsed['state']) if 'state' in parsed else None
@@ -150,7 +160,7 @@ def proxy(path):
             elif fullpath in serverinfo_paths:
                 json_body = modify_serverinfo()
             elif fullpath in device_info_paths:
-                json_body = modify_response(json_body)
+                json_body = modify_device_info(json_body)
 
             response_body = json.dumps(json_body)
             return Response(response_body, status=response.status_code, content_type='application/json')
