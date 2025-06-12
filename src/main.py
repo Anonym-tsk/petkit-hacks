@@ -19,9 +19,9 @@ LOG_LEVEL = getattr(logging, os.getenv('LOG_LEVEL', 'INFO').upper(), logging.INF
 CONF_AUTOWORK = os.getenv('CONF_AUTOWORK', 1)
 CONF_UNIT = os.getenv('CONF_UNIT', 0)
 
-API_IP_URL = f'http://{SERVER_IP}:{SERVER_PORT}/6/'
-TARGET_URL = f'http://{PETKIT_HOST}'
-API_URL = f'{TARGET_URL}/6/'
+API_IP_URL = f"http://{SERVER_IP}:{SERVER_PORT}/6/"
+TARGET_URL = f"http://{PETKIT_HOST}"
+API_URL = f"{TARGET_URL}/6/"
 PROXY_PORT = 8080
 
 # http_client.HTTPConnection.debuglevel = 1 if LOG_LEVEL <= logging.DEBUG else 0
@@ -53,13 +53,13 @@ def log_request():
     if skip_logging(request.path):
         return
 
-    logging.info(f'>>> Request: {request.method} {request.url}')
+    logging.info(f">>> Request: {request.method} {request.url}")
     for k, v in request.headers.items():
-        logging.debug(f'>>> Header: {k}: {v}')
+        logging.debug(f">>> Header: {k}: {v}")
 
     data = getattr(request, '_request_body', b'')
     if data:
-        logging.debug(f'>>> Body: {data.decode('utf-8')}')
+        logging.debug(f">>> Body: {data.decode('utf-8')}")
 
 
 @app.after_request
@@ -67,11 +67,11 @@ def log_response(response):
     if skip_logging(request.path):
         return response
 
-    logging.info(f'<<< Response: {response.status}')
+    logging.info(f"<<< Response: {response.status}")
     for k, v in response.headers.items():
-        logging.debug(f'<<< Header: {k}: {v}')
+        logging.debug(f"<<< Header: {k}: {v}")
     if response.data:
-        logging.debug(f'<<< Body: {response.data.decode('utf-8')}')
+        logging.debug(f"<<< Body: {response.data.decode('utf-8')}")
     return response
 
 
@@ -83,17 +83,17 @@ def modify_response(resp_json):
         if ((TARGET_SN is None or TARGET_SN == result.get('sn'))
                 and isinstance(settings, dict)):
             if 'autoWork' in settings:
-                logging.info(f'Modifying autowork from {settings['autoWork']} to {CONF_AUTOWORK}')
+                logging.info(f"Modifying autowork from {settings['autoWork']} to {CONF_AUTOWORK}")
                 settings['autoWork'] = CONF_AUTOWORK
             if 'unit' in settings:
-                logging.info(f'Modifying unit from {settings['unit']} to {CONF_UNIT}')
+                logging.info(f"Modifying unit from {settings['unit']} to {CONF_UNIT}")
                 settings['unit'] = CONF_UNIT
 
     return resp_json
 
 
 def modify_serverinfo():
-    logging.info(f'Modifying ipServers and apiServers')
+    logging.info(f"Modifying ipServers and apiServers")
     return {
         'result': {
             'ipServers': [API_IP_URL],
@@ -107,7 +107,7 @@ def modify_serverinfo():
 @app.route('/', defaults={'path': ''}, methods=['GET', 'POST', 'PUT', 'DELETE', 'PATCH'])
 @app.route('/<path:path>', methods=['GET', 'POST', 'PUT', 'DELETE', 'PATCH'])
 def proxy(path):
-    fullpath = f'/{path}'
+    fullpath = f"/{path}"
     url = urllib.parse.urljoin(TARGET_URL, fullpath)
     try:
         headers = {key: value for key, value in request.headers}
@@ -157,8 +157,8 @@ def proxy(path):
         else:
             return Response(response.content, status=response.status_code, headers=dict(response.headers))
     except Exception as e:
-        logging.error(f'Proxy error: {e}')
-        return Response(f'Proxy error: {str(e)}', status=502)
+        logging.error(f"Proxy error: {e}")
+        return Response(f"Proxy error: {str(e)}", status=502)
 
 
 if __name__ == '__main__':
