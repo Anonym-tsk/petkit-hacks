@@ -27,6 +27,8 @@ PROXY_PORT = 8080
 
 # http_client.HTTPConnection.debuglevel = 1 if LOG_LEVEL <= logging.DEBUG else 0
 logging.basicConfig(level=LOG_LEVEL)
+logging.getLogger("urllib3").setLevel(logging.WARNING)
+logging.getLogger("werkzeug").setLevel(logging.WARNING)
 
 app = Flask(__name__)
 ha = HomeAssistant()
