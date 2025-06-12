@@ -173,7 +173,9 @@ class HomeAssistant:
         self.__last_event_type = int(event_type)
         self.__last_event_data = content
 
-        if self.__last_event_type in [3, 5]:
+        if self.__last_event_type == 3:
+            self.__last_clean_type = int(content["reason"])
+        elif self.__last_event_type == 5:
             self.__last_clean_type = int(content["start_reason"])
         elif self.__last_event_type in [9, 10]:
             self.__last_pet_weight = int(content["pet_weight"])
