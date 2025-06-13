@@ -19,18 +19,20 @@ MESSAGE_ONLINE = "online"
 MESSAGE_OFFLINE = "offline"
 
 
-def event_type_string(event_type):
-    if event_type == 9:
+def event_type_string(device: "PetkitDevice"):
+    if device.error is not None:
+        return f'Error: {device.error}'
+    if device.event_type == 9:
         return 'Weighing'
-    if event_type == 10:
+    if device.event_type == 10:
         return 'Visit'
-    if event_type == 3:
+    if device.event_type == 3:
         return 'Cleaning'
     return 'Ready'
 
 
-def clean_type_string(clean_type):
-    if clean_type == 3:
+def clean_type_string(device: "PetkitDevice"):
+    if device.clean_type == 3:
         return 'Manually'
     return 'Automatically'
 
@@ -88,21 +90,15 @@ class HomeAssistant:
                 "unit_of_measurement": "kg"
             } | mqtt_device_data(device, 'pet_weight')), retain=True)
 
-            self.__mqttc.publish(f"homeassistant/sensor/{device.device_id}/error/config", payload=json.dumps({
-                "name": "Error",
-                "icon": "mdi:alert-circle-outline"
-            } | mqtt_device_data(device, 'error')), retain=True)
-
     def __publish_sensors_data(self, device: "PetkitDevice"):
         if self.__mqttc is not None:
             logging.debug("Publish sensors to MQTT")
 
             self.__mqttc.publish(state_topic(device.device_id), json.dumps({
                 "poop_count": device.used_times,
-                "event_type": event_type_string(device.event_type),
-                "clean_type": clean_type_string(device.clean_type),
-                "pet_weight": device.pet_weight,
-                "error": device.error
+                "event_type": event_type_string(device),
+                "clean_type": clean_type_string(device),
+                "pet_weight": device.pet_weight
             }), retain=True)
 
     @staticmethod

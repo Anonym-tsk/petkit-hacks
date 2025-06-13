@@ -10,7 +10,7 @@ class PetkitDevice:
         self.__clean_type = 0
         self.__pet_weight = 0
         self.__used_times = 0
-        self.__error = ''
+        self.__error = None
         # {"litter":{"weight":9555,"usedTimes":1,"percent":0,"sandType":0},"k3Id":0,"device":{"sw":1,"pet_in_time":0,"k3LightSwitch":0},"err":{"DC":0,"mcu":0,"scale":0,"falldown":0,"moto_M":0,"moto_D":0,"hallT":0,"hallB":0,"hallH":0,"hallD":0,"hallS":0,"hallO":0,"hallC":0,"PROX":0,"rtc":0,"atmz":0,"full":0,"scaleD":0,"OLED":0},"sensor":{"weight":9585,"stdby_hall":0,"dump_hall":1,"smooth_hall":1,"open_hall":1,"close_hall":0,"top_hall":0,"box_hall":0,"prox_L":0,"prox_R":42},"boxState":1,"other":"heap:75644,runt:65233,res:6,ow:7134078,cw:7132092,zw:7764741,Ls:66,Hs:66,cur:188_657_0,DC:12390,pet:1,PX:200-42,PXS:2147483647-1,ws:0,wcnt:2,md:510,k3c:0,IOT:3_-2319,dtp:12"}
         self.__state = {}
         # зависит от типа события, например такое
@@ -44,7 +44,7 @@ class PetkitDevice:
 
         self.__event_type = event_type
         self.__event_data = event_data
-        self.__error = event_data['err'] if 'err' in event_data else ''
+        self.__error = event_data['err'] if 'err' in event_data else None
 
         if event_type == 3:
             self.__clean_type = int(event_data['reason'])
