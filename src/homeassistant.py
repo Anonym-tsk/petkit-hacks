@@ -164,7 +164,8 @@ class HomeAssistant:
 
     def set_device_name(self, device_name):
         self.__device_name = device_name
-        self.__start()
+        if self.__mqttc is None:
+            self.__start()
 
     def set_firmware(self, firmware):
         self.__firmware = firmware
