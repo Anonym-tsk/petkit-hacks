@@ -24,6 +24,8 @@ services:
       context: .
       dockerfile: Dockerfile
     container_name: petkit-hacks
+    dns:
+      - 8.8.8.8
     ports:
       - "80:8080"
     environment:
