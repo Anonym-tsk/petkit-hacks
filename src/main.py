@@ -6,7 +6,7 @@ import urllib.parse
 from flask import Flask, request, Response
 import urllib3
 
-from homeassistant import HomeAssistant
+from petkit_device import PetkitDeviceManager
 
 urllib3.disable_warnings(urllib3.exceptions.InsecureRequestWarning)
 
@@ -31,15 +31,22 @@ logging.getLogger("urllib3").setLevel(logging.WARNING)
 logging.getLogger("werkzeug").setLevel(logging.WARNING)
 
 app = Flask(__name__)
-ha = HomeAssistant()
+devices = PetkitDeviceManager()
 
 device_info_paths = {'/6/t4/dev_device_info', '/6/t3/dev_device_info'}
-iot_device_info_paths = {'/6/t4/dev_iot_device_info', '/6/t3/dev_iot_device_info'}
 signup_paths = {'/6/t4/dev_signup', '/6/t3/dev_signup'}
 heartbeat_paths = {'/6/poll/t4/heartbeat', '/6/poll/t3/heartbeat'}
 serverinfo_paths = {'/6/t4/dev_serverinfo', '/6/t3/dev_serverinfo'}
 state_report_paths = {'/6/t4/dev_state_report', '/6/t3/dev_state_report'}
 event_report_paths = {'/6/t4/dev_event_report', '/6/t3/dev_event_report'}
+
+
+def parse_url_string(string: str):
+    try:
+        parsed = urllib.parse.parse_qs(string)
+        return {k: v[0] for k, v in parsed.items()}
+    except:
+        return {}
 
 
 def skip_logging(path):
@@ -120,27 +127,46 @@ def proxy(path):
         headers['User-Agent'] = 'PETKIT DEV'
         headers['Host'] = PETKIT_HOST
 
+        request_body = getattr(request, '_request_body', b'')
+
+        device_id = None
+        if 'X-Device' in headers:
+            # id=400179435&nonce=9oli6a197nCL&timestamp=1749702597&type=T4&sign=5efdfe2721ddac521fbf202e0f49b3f8
+            x_device = parse_url_string(headers['X-Device'])
+            if 'id' in x_device:
+                device_id = x_device['id']
+                if 'type' in x_device:
+                    devices.set_type(device_id, x_device['type'])
+
         if fullpath in signup_paths:
-            parsed = request.form.to_dict()
-            if 'firmware' in parsed:
-                ha.set_firmware(parsed['firmware'])
+            # hardware=1&firmware=1.625&mac=9454c5e14bd4&timezone=3.0&locale=Europe/Moscow&id=400179435&sn=20241123T30997&bt_mac=9454c5e14bd6&ap_mac=9454c5e14bd5&chipid=14765012
+            body = parse_url_string(request_body)
+            if 'id' in body:
+                device_id = body['id']
+                if 'firmware' in body:
+                    devices.set_firmware(device_id, body['firmware'])
+
         elif fullpath in event_report_paths:
             parsed = request.form.to_dict()
             if 'eventType' in parsed:
-                event_type = parsed['eventType']
+                event_type = int(parsed['eventType'])
                 content = json.loads(parsed['content'])
                 state = json.loads(parsed['state']) if 'state' in parsed else None
-                ha.process_event(event_type, content, state)
+                if device_id is not None:
+                    devices.set_event(device_id, event_type, content, state)
+
         elif fullpath in state_report_paths:
             parsed = request.form.to_dict()
-            state = json.loads(parsed['state'])
-            ha.process_state(state)
+            if 'state' in parsed:
+                state = json.loads(parsed['state'])
+                if device_id is not None:
+                    devices.set_state(device_id, state)
 
         response = requests.request(
             method=request.method,
             url=url,
             headers=headers,
-            data=getattr(request, '_request_body', b''),
+            data=request_body,
             cookies=request.cookies,
             allow_redirects=False,
             verify=False,
@@ -150,18 +176,16 @@ def proxy(path):
         content_type = response.headers.get('Content-Type', '')
         if 'application/json' in content_type:
             json_body = response.json()
-            if fullpath in iot_device_info_paths:
-                if 'result' in json_body and 'deviceName' in json_body['result']:
-                    ha.set_device_name(json_body['result']['deviceName'])
-            elif fullpath in serverinfo_paths:
+            if fullpath in serverinfo_paths:
                 json_body = modify_serverinfo()
             elif fullpath in device_info_paths:
                 json_body = modify_device_info(json_body)
 
             response_body = json.dumps(json_body)
             return Response(response_body, status=response.status_code, content_type='application/json')
-        else:
-            return Response(response.content, status=response.status_code, headers=dict(response.headers))
+
+        return Response(response.content, status=response.status_code, headers=dict(response.headers))
+
     except Exception as e:
         logging.error(f"Proxy error: {e}")
         return Response(f"Proxy error: {str(e)}", status=502)
@@ -171,5 +195,5 @@ if __name__ == '__main__':
     try:
         app.run(host='0.0.0.0', port=PROXY_PORT)
     except KeyboardInterrupt:
-        ha.disconnect()
+        devices.destroy()
         pass
