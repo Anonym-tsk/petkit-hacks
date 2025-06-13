@@ -88,6 +88,11 @@ class HomeAssistant:
                 "unit_of_measurement": "kg"
             } | mqtt_device_data(device, 'pet_weight')), retain=True)
 
+            self.__mqttc.publish(f"homeassistant/sensor/{device.device_id}/error/config", payload=json.dumps({
+                "name": "Error",
+                "icon": "mdi:alert-circle-outline"
+            } | mqtt_device_data(device, 'error')), retain=True)
+
     def __publish_sensors_data(self, device: "PetkitDevice"):
         if self.__mqttc is not None:
             logging.debug("Publish sensors to MQTT")
@@ -96,7 +101,8 @@ class HomeAssistant:
                 "poop_count": device.used_times,
                 "event_type": event_type_string(device.event_type),
                 "clean_type": clean_type_string(device.clean_type),
-                "pet_weight": device.pet_weight
+                "pet_weight": device.pet_weight,
+                "error": device.error
             }), retain=True)
 
     @staticmethod
