@@ -127,8 +127,6 @@ def proxy(path):
         headers['User-Agent'] = 'PETKIT DEV'
         headers['Host'] = PETKIT_HOST
 
-        request_body = getattr(request, '_request_body', b'')
-
         device_id = None
         if 'X-Device' in headers:
             # id=400179435&nonce=9oli6a197nCL&timestamp=1749702597&type=T4&sign=5efdfe2721ddac521fbf202e0f49b3f8
@@ -140,11 +138,11 @@ def proxy(path):
 
         if fullpath in signup_paths:
             # hardware=1&firmware=1.625&mac=9454c5e14bd4&timezone=3.0&locale=Europe/Moscow&id=400179435&sn=20241123T30997&bt_mac=9454c5e14bd6&ap_mac=9454c5e14bd5&chipid=14765012
-            body = parse_url_string(request_body)
-            if 'id' in body:
-                device_id = body['id']
-                if 'firmware' in body:
-                    devices.set_firmware(device_id, body['firmware'])
+            parsed = request.form.to_dict()
+            if 'id' in parsed:
+                device_id = parsed['id']
+                if 'firmware' in parsed:
+                    devices.set_firmware(device_id, parsed['firmware'])
 
         elif fullpath in event_report_paths:
             parsed = request.form.to_dict()
@@ -166,7 +164,7 @@ def proxy(path):
             method=request.method,
             url=url,
             headers=headers,
-            data=request_body,
+            data=getattr(request, '_request_body', b''),
             cookies=request.cookies,
             allow_redirects=False,
             verify=False,
