@@ -35,19 +35,20 @@ services:
 
 Другие параметры:
 
-| Параметр      | Значение по-умолчанию | Описание                                                                                   |
-|---------------|-----------------------|--------------------------------------------------------------------------------------------|
-| SERVER_IP     |                       | Внешний IP адрес вашего сервера                                                            |
-| SERVER_PORT   | 80                    | Порт на котором работает прокси                                                            |
-| TARGET_SN     |                       | Серийный номер вашего устройства, если не задан, прокси будет работать с любым устройством |
-| PETKIT_HOST   | api.eu-pet.com        | API-хост на который ходит лоток, по-умолчанию для региона Россия                           |
-| LOG_LEVEL     | info                  | Log level: debug, info, warning                                                            |
-| CONF_AUTOWORK | 1                     | Включить автоматическую очистку                                                            |
-| CONF_UNIT     | 0                     | Единицы измерения, отображаемые лотком (1 - lbs, 0 - kg)                                   |
-| MQTT_HOST     |                       | MQTT сервер, включает Home Assistant MQTT Discovery                                        |
-| MQTT_PORT     | 1883                  | MQTT порт                                                                                  |
-| MQTT_USER     |                       | MQTT логин                                                                                 |
-| MQTT_PASS     |                       | MQTT пароль                                                                                |
+| Параметр       | Значение по-умолчанию | Описание                                                                                                        |
+|----------------|-----------------------|-----------------------------------------------------------------------------------------------------------------|
+| SERVER_IP      |                       | Внешний IP адрес вашего сервера                                                                                 |
+| SERVER_PORT    | 80                    | Порт на котором работает прокси                                                                                 |
+| TARGET_SN      |                       | Серийный номер вашего устройства, если не задан, прокси будет работать с любым устройством                      |
+| PETKIT_HOST    | api.eu-pet.com        | API-хост на который ходит лоток, по-умолчанию для региона Россия                                                |
+| LOG_LEVEL      | info                  | Log level: debug, info, warning                                                                                 |
+| CONF_AUTOWORK  | 1                     | Включить автоматическую очистку                                                                                 |
+| CONF_UNIT      | 0                     | Единицы измерения, отображаемые лотком (1 - lbs, 0 - kg)                                                        |
+| CONF_SAND_TYPE | 1                     | Тип наполнителя. Достоверно неизвестно за что отвечает, но значение 1 убирает ошибку "недостаточно наполнителя" |
+| MQTT_HOST      |                       | MQTT сервер, включает Home Assistant MQTT Discovery                                                             |
+| MQTT_PORT      | 1883                  | MQTT порт                                                                                                       |
+| MQTT_USER      |                       | MQTT логин                                                                                                      |
+| MQTT_PASS      |                       | MQTT пароль                                                                                                     |
 
 ### Подмена DNS
 
@@ -74,4 +75,5 @@ system configuration save
 - [Как я воевал с китайским умным туалетом для котов](https://habr.com/ru/articles/908086/)
 - [earlynerd/petkit-pura-max-serial-bus](https://github.com/earlynerd/petkit-pura-max-serial-bus)
 - [Switch MQTT Broker](https://github.com/earlynerd/petkit-pura-max-serial-bus/issues/1)
-- [dwyschka/localkit](https://github.com/dwyschka/localkit) и [dwyschka/localkit-broker](https://github.com/dwyschka/localkit-broker)
+- [dwyschka/localkit](https://github.com/dwyschka/localkit)
+  и [dwyschka/localkit-broker](https://github.com/dwyschka/localkit-broker)
