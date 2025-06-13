@@ -36,7 +36,7 @@ def clean_type_string(clean_type):
 
 
 def state_topic(device_id: str):
-    return f"{device_id}/status/state"
+    return f"petkit/{device_id}/status/state"
 
 
 def mqtt_device_data(device: "PetkitDevice", sensor_id: str):
