@@ -79,3 +79,7 @@ system configuration save
 - [Switch MQTT Broker](https://github.com/earlynerd/petkit-pura-max-serial-bus/issues/1)
 - [dwyschka/localkit](https://github.com/dwyschka/localkit)
   и [dwyschka/localkit-broker](https://github.com/dwyschka/localkit-broker)
+
+---
+
+Нравится проект? Поддержи автора [здесь](https://yoomoney.ru/to/410019180291197) или [тут](https://pay.cloudtips.ru/p/054d0666). Купи ему немного :beers: или :coffee:!
