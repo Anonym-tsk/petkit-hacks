@@ -25,7 +25,8 @@ class PetkitDevice:
 
     def set_state(self, state: {}):
         self.__state = state
-        self.__used_times = state['litter']['usedTimes'] + 1
+        # TODO: usedTimes не совпадает с отображаемым на экране
+        self.__used_times = state['litter']['usedTimes']
 
     def set_event(self, event_type: int, event_data: {}):
         # eventType=9 - изменение веса
