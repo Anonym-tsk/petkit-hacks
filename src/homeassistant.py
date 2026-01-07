@@ -45,7 +45,7 @@ def mqtt_device_data(device: "PetkitDevice", sensor_id: str):
     return {
         "availability_topic": TOPIC_AVAILABLE,
         "unique_id": f"{device.device_id}_{sensor_id}",
-        "object_id": f"{device.device_id}_{sensor_id}",
+        "default_entity_id": f"{device.device_id}_{sensor_id}",
         "state_topic": state_topic(device.device_id),
         "value_template": "{{ value_json." + sensor_id + " }}",
         "device": {
